@@ -67,6 +67,18 @@ label{display:block;font-size:16px;color:var(--muted);margin:10px 0 6px}
 .pin{max-width:420px;margin:12vh auto 0;text-align:center}
 .pin .in{font-size:32px;text-align:center;letter-spacing:12px}
 textarea.in{min-height:110px;font-size:14px}
+.ovrow{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.ovbtn{font-size:22px;font-weight:600;padding:14px 24px;border-radius:999px;background:rgba(255,255,255,.92);color:#111}
+/* Full-screen video: automatic in landscape, or with the button in portrait */
+body.full #watch.on .top, body.full #watch.on .ctrl, body.full #watch.on #eps{display:none}
+body.full #watch.on{padding:0}
+body.full #watch.on .pwrap{position:fixed;inset:0;width:100vw;height:100vh;max-height:none;aspect-ratio:auto;border-radius:0;z-index:20}
+@media (orientation: landscape){
+  #watch.on .top, #watch.on .ctrl, #watch.on #eps{display:none}
+  #watch.on{padding:0}
+  #watch.on .pwrap{position:fixed;inset:0;width:100vw;height:100vh;max-height:none;aspect-ratio:auto;border-radius:0;z-index:20}
+  #fullBtn, .ov-shrink{display:none}
+}
 </style>
 </head>
 <body>
@@ -87,7 +99,15 @@ textarea.in{min-height:110px;font-size:14px}
     <div id="player"></div>
     <div class="shield-top"></div>
     <div class="shield-logo"></div>
-    <div class="overlay" id="pauseOv"><button class="big" id="resumeBtn">&#9654; تشغيل</button></div>
+    <div class="overlay" id="pauseOv">
+      <button class="big" id="resumeBtn">&#9654; تشغيل</button>
+      <div class="ovrow">
+        <button class="ovbtn" id="ovPrev">&#8594; السابقة</button>
+        <button class="ovbtn" id="ovBack">رجوع للمسلسلات</button>
+        <button class="ovbtn" id="ovNext">التالية &#8592;</button>
+        <button class="ovbtn ov-shrink" id="ovShrink">تصغير الشاشة</button>
+      </div>
+    </div>
     <div class="overlay" id="endOv">
       <div style="font-size:30px;font-weight:600">انتهت الحلقات</div>
       <div class="row" style="justify-content:center">
@@ -100,6 +120,7 @@ textarea.in{min-height:110px;font-size:14px}
     <button id="prevBtn">&#8594; السابقة</button>
     <div class="count" id="count"></div>
     <button id="nextBtn">التالية &#8592;</button>
+    <button id="fullBtn">&#9974; ملء الشاشة</button>
   </div>
   <div id="eps" class="eps"></div>
 </section>
@@ -346,7 +367,13 @@ $('prevBtn').addEventListener('click',()=>player&&player.previousVideo());
 $('nextBtn').addEventListener('click',()=>player&&player.nextVideo());
 $('resumeBtn').addEventListener('click',()=>player&&player.playVideo());
 $('restartBtn').addEventListener('click',()=>{$('endOv').classList.remove('on');player&&player.playVideoAt(0)});
-function goHome(){if(player)try{player.stopVideo()}catch(e){}try{sessionStorage.removeItem('series.cur')}catch(e){}renderHome();show('home')}
+function setFull(on){document.body.classList.toggle('full',on);if(on&&player)try{player.playVideo()}catch(e){}}
+$('fullBtn').addEventListener('click',()=>setFull(true));
+$('ovShrink').addEventListener('click',()=>{setFull(false);player&&player.playVideo()});
+$('ovPrev').addEventListener('click',()=>player&&player.previousVideo());
+$('ovNext').addEventListener('click',()=>player&&player.nextVideo());
+$('ovBack').addEventListener('click',()=>goHome());
+function goHome(){setFull(false);if(player)try{player.stopVideo()}catch(e){}try{sessionStorage.removeItem('series.cur')}catch(e){}renderHome();show('home')}
 $('backBtn').addEventListener('click',goHome);
 $('endBackBtn').addEventListener('click',goHome);
 /* Back-button guard: browsers skip history entries added without a user tap,
