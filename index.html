@@ -29,7 +29,8 @@ h1{font-size:34px;font-weight:600;text-align:center;margin:8px 0 28px}
 .pwrap{position:relative;width:100%;aspect-ratio:16/9;max-height:62vh;background:#000;border-radius:var(--radius);overflow:hidden;margin:0 auto}
 .pwrap iframe,#player{position:absolute;inset:0;width:100%;height:100%}
 .shield-top{position:absolute;top:0;left:0;right:0;height:64px;z-index:2}
-.shield-logo{position:absolute;bottom:0;right:0;width:150px;height:60px;z-index:2}
+.shield-logo{position:absolute;bottom:0;right:0;width:130px;height:60px;z-index:2}
+.shield-logo.l{right:auto;left:0}
 .overlay{position:absolute;inset:0;z-index:3;background:rgba(0,0,0,.72);display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;color:#fff}
 .overlay.on{display:flex}
 .big{font-size:30px;font-weight:600;padding:22px 44px;border-radius:999px;background:#fff;color:#111;display:flex;align-items:center;gap:12px}
@@ -86,6 +87,7 @@ textarea.in{min-height:110px;font-size:14px}
     <div id="player"></div>
     <div class="shield-top"></div>
     <div class="shield-logo"></div>
+    <div class="shield-logo l"></div>
     <div class="overlay" id="pauseOv"><button class="big" id="resumeBtn">&#9654; تشغيل</button></div>
     <div class="overlay" id="endOv">
       <div style="font-size:30px;font-weight:600">انتهت الحلقات</div>
@@ -307,6 +309,7 @@ window.onYouTubeIframeAPIReady=()=>{apiReady=true;if(pendingOpen!=null){const i=
 
 function openSeries(i){
   current=all()[i]; if(!current) return;
+  try{sessionStorage.setItem('series.cur',JSON.stringify({kind:current.kind,id:current.id}))}catch(e){}
   $('wTitle').textContent=current.name;$('eps').innerHTML='';$('count').textContent='';
   $('pauseOv').classList.remove('on');$('endOv').classList.remove('on');
   show('watch');
@@ -319,7 +322,7 @@ function openSeries(i){
     events:{onReady:onReady,onStateChange:onState}
   });
 }
-function onReady(){setTimeout(renderEps,600)}
+function onReady(){$('pauseOv').classList.add('on');setTimeout(renderEps,600)}
 function renderEps(){
   if(!player||!player.getPlaylist) return;
   const ids=player.getPlaylist()||[], cur=player.getPlaylistIndex();
@@ -329,7 +332,7 @@ function renderEps(){
 }
 function onState(e){
   const s=e.data;
-  $('pauseOv').classList.toggle('on',s===2);
+  $('pauseOv').classList.toggle('on',s===2||s===5);
   $('endOv').classList.toggle('on',s===0&&player.getPlaylistIndex()>=((player.getPlaylist()||[]).length-1));
   if(s===1||s===-1||s===5){
     const k=player.getPlaylistIndex();
@@ -344,14 +347,20 @@ $('prevBtn').addEventListener('click',()=>player&&player.previousVideo());
 $('nextBtn').addEventListener('click',()=>player&&player.nextVideo());
 $('resumeBtn').addEventListener('click',()=>player&&player.playVideo());
 $('restartBtn').addEventListener('click',()=>{$('endOv').classList.remove('on');player&&player.playVideoAt(0)});
-function goHome(){if(player)try{player.stopVideo()}catch(e){}renderHome();show('home')}
+function goHome(){if(player)try{player.stopVideo()}catch(e){}try{sessionStorage.removeItem('series.cur')}catch(e){}renderHome();show('home')}
 $('backBtn').addEventListener('click',goHome);
 $('endBackBtn').addEventListener('click',goHome);
-window.addEventListener('popstate',e=>{e.preventDefault();history.pushState(null,'',location.href);if($('watch').classList.contains('on'))goHome()});
+window.addEventListener('popstate',()=>{history.pushState(null,'',location.href)});
 history.pushState(null,'',location.href);
 
+function resume(){
+  let c=null;try{c=JSON.parse(sessionStorage.getItem('series.cur'))}catch(e){}
+  if(!c) return;
+  const i=all().findIndex(x=>same(x,c)); if(i>=0) openSeries(i);
+}
 renderHome();
-loadFixed();
+resume();
+loadFixed().then(()=>{if(!$('watch').classList.contains('on'))resume()});
 </script>
 </body>
 </html>
