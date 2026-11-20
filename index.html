@@ -160,7 +160,18 @@ const store={
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
 let items=store.get(KEY,[]);
+let fixed=store.get('series.fixed',[]);
 const save=()=>store.set(KEY,items);
+const same=(a,b)=>a.kind===b.kind&&a.id===b.id;
+const all=()=>[...fixed,...items.filter(x=>!fixed.some(f=>same(f,x)))];
+async function loadFixed(){
+  try{
+    const r=await fetch('series.json',{cache:'no-cache'});if(!r.ok)return;
+    const v=await r.json();if(!Array.isArray(v))return;
+    fixed=v.filter(x=>x&&x.id&&x.name&&(x.kind==='playlist'||x.kind==='channel'));
+    store.set('series.fixed',fixed);renderHome();
+  }catch(e){}
+}
 const colorFor=s=>COLORS[[...s].reduce((a,c)=>a+c.charCodeAt(0),0)%COLORS.length];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -172,8 +183,9 @@ function thumbHtml(it,cls){
 }
 
 function renderHome(){
-  $('grid').innerHTML=items.map((it,i)=>`<button class="card" data-i="${i}">${thumbHtml(it,'thumb')}<div class="name">${esc(it.name)}</div></button>`).join('');
-  $('empty').hidden=items.length>0;
+  const list=all();
+  $('grid').innerHTML=list.map((it,i)=>`<button class="card" data-i="${i}">${thumbHtml(it,'thumb')}<div class="name">${esc(it.name)}</div></button>`).join('');
+  $('empty').hidden=list.length>0;
 }
 $('grid').addEventListener('click',e=>{const b=e.target.closest('.card');if(b)openSeries(+b.dataset.i)});
 
@@ -211,7 +223,7 @@ $('addBtn').addEventListener('click',async()=>{
   const p=parseLink($('url').value);
   if(!p){msg.className='msg err';msg.textContent='الرابط غير صحيح. الصق رابط قائمة تشغيل أو رابط قناة من يوتيوب.';return}
   if(p.kind==='handle'){msg.className='msg err';msg.textContent='هذا رابط باسم القناة (@). نحتاج معرّف القناة الذي يبدأ بـ UC: من صفحة القناة ← «حول» ← «مشاركة القناة» ← «نسخ معرّف القناة».';return}
-  if(items.some(it=>it.kind===p.kind&&it.id===p.id)){msg.className='msg err';msg.textContent='هذا موجود في القائمة بالفعل.';return}
+  if(all().some(it=>same(it,p))){msg.className='msg err';msg.textContent='هذا موجود في القائمة بالفعل.';return}
   msg.textContent='جارٍ الإضافة…';
   let name=$('nm').value.trim(), thumb='';
   if(p.kind==='playlist'){
@@ -226,12 +238,13 @@ $('addBtn').addEventListener('click',async()=>{
 });
 
 function renderAdmin(){
-  $('list').innerHTML=items.length?items.map((it,i)=>`<div class="item">${thumbHtml(it,'')}
+  const fx=fixed.map(it=>`<div class="item">${thumbHtml(it,'')}<div class="nm">${esc(it.name)}<span class="kind">ثابت (من ملف القائمة)</span></div></div>`).join('');
+  $('list').innerHTML=fx+(items.length?items.map((it,i)=>`<div class="item">${thumbHtml(it,'')}
     <div class="nm">${esc(it.name)}<span class="kind">${it.kind==='channel'?'قناة (بدون شورتس)':'قائمة تشغيل'}</span></div>
     <button class="ic" data-a="up" data-i="${i}" aria-label="أعلى">&#9650;</button>
     <button class="ic" data-a="down" data-i="${i}" aria-label="أسفل">&#9660;</button>
     <button class="ic" data-a="ren" data-i="${i}">تسمية</button>
-    <button class="ic del" data-a="del" data-i="${i}">حذف</button></div>`).join(''):'<p class="hint">القائمة فارغة.</p>';
+    <button class="ic del" data-a="del" data-i="${i}">حذف</button></div>`).join(''):(fx?'':'<p class="hint">القائمة فارغة.</p>'));
   $('backup').value=JSON.stringify(items);
 }
 $('list').addEventListener('click',e=>{
@@ -293,7 +306,7 @@ window.onYouTubeIframeAPIReady=()=>{apiReady=true;if(pendingOpen!=null){const i=
 (function(){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)})();
 
 function openSeries(i){
-  current=items[i]; if(!current) return;
+  current=all()[i]; if(!current) return;
   $('wTitle').textContent=current.name;$('eps').innerHTML='';$('count').textContent='';
   $('pauseOv').classList.remove('on');$('endOv').classList.remove('on');
   show('watch');
@@ -338,6 +351,7 @@ window.addEventListener('popstate',e=>{e.preventDefault();history.pushState(null
 history.pushState(null,'',location.href);
 
 renderHome();
+loadFixed();
 </script>
 </body>
 </html>
