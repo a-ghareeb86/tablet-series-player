@@ -349,7 +349,12 @@ $('restartBtn').addEventListener('click',()=>{$('endOv').classList.remove('on');
 function goHome(){if(player)try{player.stopVideo()}catch(e){}try{sessionStorage.removeItem('series.cur')}catch(e){}renderHome();show('home')}
 $('backBtn').addEventListener('click',goHome);
 $('endBackBtn').addEventListener('click',goHome);
-window.addEventListener('popstate',()=>{history.pushState(null,'',location.href)});
+/* Back-button guard: browsers skip history entries added without a user tap,
+   so add one on every tap (up to a cap). Back then just consumes a guard entry
+   instead of closing the app page. */
+let guard=0;
+document.addEventListener('pointerdown',()=>{if(guard<40){guard++;history.pushState({g:guard},'',location.href)}},true);
+window.addEventListener('popstate',()=>{guard=Math.max(0,guard-1);history.pushState({g:guard},'',location.href)});
 history.pushState(null,'',location.href);
 
 function resume(){
