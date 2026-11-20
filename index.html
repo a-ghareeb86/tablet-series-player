@@ -367,6 +367,11 @@ $('prevBtn').addEventListener('click',()=>player&&player.previousVideo());
 $('nextBtn').addEventListener('click',()=>player&&player.nextVideo());
 $('resumeBtn').addEventListener('click',()=>player&&player.playVideo());
 $('restartBtn').addEventListener('click',()=>{$('endOv').classList.remove('on');player&&player.playVideoAt(0)});
+/* Pause when the page leaves the screen (Home button, screen off, another app) */
+function pauseIfHidden(){if(document.hidden&&player)try{player.pauseVideo()}catch(e){}}
+document.addEventListener('visibilitychange',pauseIfHidden);
+window.addEventListener('pagehide',()=>{if(player)try{player.pauseVideo()}catch(e){}});
+window.addEventListener('blur',()=>setTimeout(pauseIfHidden,300));
 function setFull(on){document.body.classList.toggle('full',on);if(on&&player)try{player.playVideo()}catch(e){}}
 $('fullBtn').addEventListener('click',()=>setFull(true));
 $('ovShrink').addEventListener('click',()=>{setFull(false);player&&player.playVideo()});
